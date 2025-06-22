@@ -1,0 +1,40 @@
+{
+  "collection": {
+    "interval_seconds": 900,
+    "batch_size": 100,
+    "max_retries": 3,
+    "timeout_seconds": 30
+  },
+  "analytics": {
+    "energy_threshold": 85,
+    "security_threshold": 90,
+    "health_threshold": 95
+  },
+  "entity_filters": {
+    "include_domains": [
+      "sensor",
+      "binary_sensor",
+      "climate",
+      "light",
+      "switch",
+      "automation",
+      "device_tracker"
+    ],
+    "exclude_patterns": [
+      "*_battery",
+      "*_signal_strength",
+      "*_last_seen"
+    ]
+  },
+  "notifications": {
+    "enabled": true,
+    "energy_alert_threshold": 80,
+    "security_alert_threshold": 85,
+    "device_offline_threshold": 5
+  },
+  "data_retention": {
+    "raw_data_days": 7,
+    "analytics_data_days": 90,
+    "summary_data_days": 365
+  }
+}
