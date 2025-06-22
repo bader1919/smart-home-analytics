@@ -1,0 +1,110 @@
+# Logs and data files
+*.log
+logs/
+data/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Docker volumes
+neo4j_data/
+redis_data/
+collector_logs/
+
+# Backup files
+backups/
+*.backup
+*.dump
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Secrets and keys
+*.key
+*.pem
+*.p12
+secrets/
+credentials/
+
+# Database dumps
+*.sql
+*.sqlite
+*.db
+
+# Certificates
+*.crt
+*.cer
+
+# Docker
+.docker/
+
+# Grafana
+grafana/data/
+
+# Redis
+dump.rdb
+
+# Home Assistant specific
+home-assistant.log
+OZW_Log.txt
+.uuid
+.cloud
+.storage
