@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Neo4j Database for Graphiti
   neo4j:
@@ -14,55 +12,18 @@ services:
     environment:
       - NEO4J_AUTH=neo4j/bader123
       - NEO4J_PLUGINS=["apoc"]
-      - NEO4J_server_memory_heap_initialsize=512m
-      - NEO4J_server_memory_heap_maxsize=2g
+      - NEO4J_server_memory_heap_initial__size=512m
+      - NEO4J_server_memory_heap_max__size=2g
       - NEO4J_server_memory_pagecache_size=1g
-      - NEO4J_server_bolt_listen__address=0.0.0.0:7687
-      - NEO4J_server_http_listen__address=0.0.0.0:7474
-      - NEO4J_server_bolt_advertised__address=192.168.11.23:7687
-      - NEO4J_server_http_advertised__address=192.168.11.23:7474
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
     ports:
       - "7474:7474"   # HTTP
       - "7687:7687"   # Bolt
-    networks:
-      vlan-static-eth0.11-cce8d8:
-        ipv4_address: 192.168.11.23
     healthcheck:
       test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "bader123", "RETURN 1"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
-
-  # Graphiti MCP Server
-  graphiti-mcp:
-    image: graphiti-mcp-local:latest
-    container_name: graphiti-mcp
-    restart: unless-stopped
-    ports:
-      - "8000:8000"
-    environment:
-      - NEO4J_URI=bolt://192.168.11.23:7687
-      - NEO4J_USER=neo4j
-      - NEO4J_PASSWORD=bader123
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - MODEL_NAME=gpt-4o-mini
-      - SMALL_MODEL_NAME=gpt-4o-mini
-      - LLM_TEMPERATURE=0.1
-      - MCP_SERVER_HOST=0.0.0.0
-      - MCP_SERVER_PORT=8000
-    command: ["uv", "run", "graphiti_mcp_server.py", "--transport", "sse", "--group-id", "bymb-consultancy"]
-    networks:
-      vlan-static-eth0.11-cce8d8:
-        ipv4_address: 192.168.11.29
-    depends_on:
-      neo4j:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/sse"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
       start_period: 90s
 
   # Redis Cache for Analytics
@@ -74,9 +35,6 @@ services:
       - redis_data:/data
     ports:
       - "6379:6379"
-    networks:
-      vlan-static-eth0.11-cce8d8:
-        ipv4_address: 192.168.11.30
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
@@ -91,26 +49,15 @@ services:
     container_name: ha-data-collector
     restart: unless-stopped
     environment:
-      - HOME_ASSISTANT_URL=http://192.168.11.198:8123
+      - HOME_ASSISTANT_URL=${HOME_ASSISTANT_URL}
       - HOME_ASSISTANT_TOKEN=${HOME_ASSISTANT_TOKEN}
-      - GRAPHITI_URL=http://192.168.11.29:8000
-      - COLLECTION_INTERVAL=900  # 15 minutes
-      - GROUP_ID=bymb-consultancy
+      - COLLECTION_INTERVAL=${COLLECTION_INTERVAL}
+      - GROUP_ID=${GRAPHITI_GROUP_ID}
     volumes:
       - ./collector/config.json:/app/config.json:ro
       - collector_logs:/app/logs
-    networks:
-      vlan-static-eth0.11-cce8d8:
-        ipv4_address: 192.168.11.31
     depends_on:
-      - graphiti-mcp
       - redis
-    healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('${HOME_ASSISTANT_URL}/api/')"]
-      interval: 60s
-      timeout: 30s
-      retries: 3
-      start_period: 120s
 
   # Analytics Dashboard
   dashboard:
@@ -121,24 +68,10 @@ services:
     restart: unless-stopped
     ports:
       - "3000:80"
-    environment:
-      - GRAPHITI_API_URL=http://192.168.11.29:8000
-      - REDIS_URL=redis://192.168.11.30:6379
-      - HA_URL=http://192.168.11.198:8123
     volumes:
-      - ./dashboard:/usr/share/nginx/html:ro
       - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
-    networks:
-      vlan-static-eth0.11-cce8d8:
-        ipv4_address: 192.168.11.32
     depends_on:
-      - graphiti-mcp
       - redis
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 volumes:
   neo4j_data:
@@ -153,7 +86,3 @@ volumes:
     driver: local
   collector_logs:
     driver: local
-
-networks:
-  vlan-static-eth0.11-cce8d8:
-    external: true

@@ -11,6 +11,16 @@ COMPOSE_FILE="docker-compose.yml"
 ENV_FILE=".env"
 LOG_DIR="./logs"
 
+# Detect Docker Compose command
+if command -v docker-compose &> /dev/null; then
+    COMPOSE_CMD="docker-compose"
+elif docker compose version &> /dev/null 2>&1; then
+    COMPOSE_CMD="docker compose"
+else
+    echo "ERROR: Docker Compose not found. Please install docker-compose or use Docker with Compose plugin."
+    exit 1
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -56,12 +66,6 @@ check_prerequisites() {
         exit 1
     fi
     
-    # Check Docker Compose
-    if ! command -v docker-compose &> /dev/null; then
-        error "Docker Compose is not installed. Please install Docker Compose first."
-        exit 1
-    fi
-    
     # Check environment file
     if [ ! -f "$ENV_FILE" ]; then
         warn "Environment file not found. Creating from template..."
@@ -74,14 +78,14 @@ check_prerequisites() {
         fi
     fi
     
-    log "Prerequisites check completed ?"
+    log "Prerequisites check completed ✓"
 }
 
 # Build services
 build_services() {
     log "Building Docker services..."
-    docker-compose -f "$COMPOSE_FILE" build --no-cache
-    log "Build completed ?"
+    $COMPOSE_CMD -f "$COMPOSE_FILE" build --no-cache
+    log "Build completed ✓"
 }
 
 # Start services
@@ -92,11 +96,11 @@ start_services() {
     
     # Pull latest images
     info "Pulling latest Docker images..."
-    docker-compose -f "$COMPOSE_FILE" pull
+    $COMPOSE_CMD -f "$COMPOSE_FILE" pull
     
     # Start services
     info "Starting services..."
-    docker-compose -f "$COMPOSE_FILE" up -d
+    $COMPOSE_CMD -f "$COMPOSE_FILE" up -d
     
     # Wait for services to be ready
     info "Waiting for services to initialize..."
@@ -105,7 +109,7 @@ start_services() {
     # Check service health
     check_health
     
-    log "Smart Home Analytics platform started successfully! ?"
+    log "Smart Home Analytics platform started successfully! 🚀"
     echo ""
     show_endpoints
 }
@@ -113,8 +117,8 @@ start_services() {
 # Stop services
 stop_services() {
     log "Stopping services..."
-    docker-compose -f "$COMPOSE_FILE" down
-    log "Services stopped ?"
+    $COMPOSE_CMD -f "$COMPOSE_FILE" down
+    log "Services stopped ✓"
 }
 
 # Restart services
@@ -128,11 +132,11 @@ restart_services() {
 # Show service status
 show_status() {
     log "Service Status:"
-    docker-compose -f "$COMPOSE_FILE" ps
+    $COMPOSE_CMD -f "$COMPOSE_FILE" ps
     echo ""
     
     info "Container Health Status:"
-    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "(neo4j|graphiti|redis|collector|dashboard)"
+    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "(neo4j|graphiti|redis|collector|dashboard)" || echo "No matching containers found"
 }
 
 # Show logs
@@ -140,10 +144,10 @@ show_logs() {
     local service=$1
     if [ -z "$service" ]; then
         log "Showing logs for all services..."
-        docker-compose -f "$COMPOSE_FILE" logs --tail=50 -f
+        $COMPOSE_CMD -f "$COMPOSE_FILE" logs --tail=50 -f
     else
         log "Showing logs for service: $service"
-        docker-compose -f "$COMPOSE_FILE" logs --tail=50 -f "$service"
+        $COMPOSE_CMD -f "$COMPOSE_FILE" logs --tail=50 -f "$service"
     fi
 }
 
@@ -155,38 +159,38 @@ check_health() {
     
     # Check Neo4j
     if curl -s http://localhost:7474 > /dev/null 2>&1; then
-        echo -e "  Neo4j Database: ${GREEN}? Healthy${NC}"
+        echo -e "  Neo4j Database: ${GREEN}✓ Healthy${NC}"
     else
-        echo -e "  Neo4j Database: ${RED}? Unhealthy${NC}"
+        echo -e "  Neo4j Database: ${RED}✗ Unhealthy${NC}"
         all_healthy=false
     fi
     
     # Check Graphiti MCP
-    if curl -s http://localhost:8000/sse > /dev/null 2>&1; then
-        echo -e "  Graphiti MCP: ${GREEN}? Healthy${NC}"
+    if curl -s http://localhost:8000 > /dev/null 2>&1; then
+        echo -e "  Graphiti MCP: ${GREEN}✓ Healthy${NC}"
     else
-        echo -e "  Graphiti MCP: ${RED}? Unhealthy${NC}"
+        echo -e "  Graphiti MCP: ${RED}✗ Unhealthy${NC}"
         all_healthy=false
     fi
     
     # Check Redis
     if docker exec redis-cache redis-cli ping > /dev/null 2>&1; then
-        echo -e "  Redis Cache: ${GREEN}? Healthy${NC}"
+        echo -e "  Redis Cache: ${GREEN}✓ Healthy${NC}"
     else
-        echo -e "  Redis Cache: ${RED}? Unhealthy${NC}"
+        echo -e "  Redis Cache: ${RED}✗ Unhealthy${NC}"
         all_healthy=false
     fi
     
     # Check Dashboard
     if curl -s http://localhost:3000 > /dev/null 2>&1; then
-        echo -e "  Analytics Dashboard: ${GREEN}? Healthy${NC}"
+        echo -e "  Analytics Dashboard: ${GREEN}✓ Healthy${NC}"
     else
-        echo -e "  Analytics Dashboard: ${RED}? Unhealthy${NC}"
+        echo -e "  Analytics Dashboard: ${RED}✗ Unhealthy${NC}"
         all_healthy=false
     fi
     
     if [ "$all_healthy" = true ]; then
-        log "All services are healthy ?"
+        log "All services are healthy ✓"
     else
         warn "Some services are not responding properly"
     fi
@@ -207,23 +211,23 @@ test_integration() {
     # Test HA connectivity
     local ha_url="${HOME_ASSISTANT_URL:-http://192.168.11.198:8123}"
     if curl -s -H "Authorization: Bearer $HOME_ASSISTANT_TOKEN" "$ha_url/api/" > /dev/null 2>&1; then
-        echo -e "  Home Assistant: ${GREEN}? Connected${NC}"
+        echo -e "  Home Assistant: ${GREEN}✓ Connected${NC}"
     else
-        echo -e "  Home Assistant: ${RED}? Cannot connect${NC}"
+        echo -e "  Home Assistant: ${RED}✗ Cannot connect${NC}"
         error "Cannot connect to Home Assistant at $ha_url"
         return 1
     fi
     
-    log "Integration test completed ?"
+    log "Integration test completed ✓"
 }
 
 # Show service endpoints
 show_endpoints() {
     info "Service Endpoints:"
-    echo "  ? Analytics Dashboard:  http://localhost:3000"
-    echo "  ? Graphiti MCP API:     http://localhost:8000"
-    echo "  ? Neo4j Browser:       http://localhost:7474"
-    echo "  ? Redis Commander:     Available via docker exec"
+    echo "  🏠 Analytics Dashboard:  http://localhost:3000"
+    echo "  🧠 Graphiti MCP API:     http://localhost:8000"
+    echo "  📊 Neo4j Browser:       http://localhost:7474"
+    echo "  ⚡ Redis Commander:     Available via docker exec"
     echo ""
     info "Credentials:"
     echo "  Neo4j: neo4j / bader123"
@@ -240,7 +244,7 @@ update_services() {
     log "Updating services..."
     
     # Pull latest images
-    docker-compose -f "$COMPOSE_FILE" pull
+    $COMPOSE_CMD -f "$COMPOSE_FILE" pull
     
     # Rebuild custom images
     build_services
@@ -248,29 +252,7 @@ update_services() {
     # Restart with new images
     restart_services
     
-    log "Services updated ?"
-}
-
-# Backup data
-backup_data() {
-    local backup_dir="./backups/$(date +%Y%m%d_%H%M%S)"
-    log "Creating backup in $backup_dir..."
-    
-    mkdir -p "$backup_dir"
-    
-    # Backup Neo4j data
-    docker exec neo4j-graphiti neo4j-admin dump --database=neo4j --to=/tmp/neo4j_backup.dump
-    docker cp neo4j-graphiti:/tmp/neo4j_backup.dump "$backup_dir/"
-    
-    # Backup Redis data
-    docker exec redis-cache redis-cli BGSAVE
-    docker cp redis-cache:/data/dump.rdb "$backup_dir/"
-    
-    # Backup configuration
-    cp -r ./config "$backup_dir/" 2>/dev/null || true
-    cp "$ENV_FILE" "$backup_dir/" 2>/dev/null || true
-    
-    log "Backup completed: $backup_dir ?"
+    log "Services updated ✓"
 }
 
 # Show usage
@@ -290,7 +272,6 @@ show_usage() {
     echo "  test        Test Home Assistant integration"
     echo "  build       Build Docker services"
     echo "  update      Update services to latest versions"
-    echo "  backup      Create data backup"
     echo "  endpoints   Show service endpoints and credentials"
     echo ""
     echo "Examples:"
@@ -328,9 +309,6 @@ case "${1:-}" in
         ;;
     update)
         update_services
-        ;;
-    backup)
-        backup_data
         ;;
     endpoints)
         show_endpoints
